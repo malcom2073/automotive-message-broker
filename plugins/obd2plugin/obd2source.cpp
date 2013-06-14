@@ -85,6 +85,7 @@ bool connect(obdLib* obd, std::string device, std::string strbaud)
 		//No reply found
 		//printf("Error!\n");
 		DebugOut() << __SMALLFILE__ <<":"<< __LINE__ << "Error resetting ELM"<<endl;
+		//We don't return false here, just in case it is a non ELM tool. See if the other commands work.
 	}
 	else
 	{
@@ -94,23 +95,31 @@ bool connect(obdLib* obd, std::string device, std::string strbaud)
 	{
 		//printf("Error sending echo\n");
 		DebugOut() << __SMALLFILE__ <<":"<< __LINE__ << "Error setting auto protocol"<<endl;
+		return false;
 	}
 	if (!sendElmCommand(obd,"ATE0"))
 	{
 		//printf("Error sending echo\n");
 		DebugOut() << __SMALLFILE__ <<":"<< __LINE__ << "Error turning off echo"<<endl;
+		return false;
 	}
 	if (!sendElmCommand(obd,"ATH0"))
 	{
 		//printf("Error sending headers off\n");
 		DebugOut() << __SMALLFILE__ <<":"<< __LINE__ << "Error turning off headers"<<endl;
+		return false;
 	}
 	if (!sendElmCommand(obd,"ATL0"))
 	{
 		//printf("Error turning linefeeds off\n");
 		DebugOut() << __SMALLFILE__ <<":"<< __LINE__ << "Error turning off linefeeds"<<endl;
+		return false;
 	}
-	obd->sendObdRequestString("010C1\r",6,&replyVector,500,5);
+	if (!obd->sendObdRequestString("010C1\r",6,&replyVector,500,5))
+	{
+		return false;
+	}
+	return true;
 }
 
 void threadLoop(gpointer data)
@@ -229,6 +238,11 @@ void threadLoop(gpointer data)
 						statusreq->statusStr = "disconnected";
 						g_async_queue_push(privStatusQueue,statusreq);
 					}
+					DebugOut() << "End of connect if not" << endl;
+				}
+				else
+				{
+				      DebugOut() << "End of connect if not, already connected!" << endl;
 				}
 			}
 			else if (req->req == "setportandbaud")
